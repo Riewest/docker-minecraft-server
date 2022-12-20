@@ -5,9 +5,10 @@ services:
     environment:
       EULA: "true"
       TYPE: FORGE
-      DEBUG: "true"
+      DEBUG: "false"
       VERSION: 1.19.2
       FORGEVERSION: 43.1.55
+      OPS: riewest,logicengineer
       MEMORY: 8G
       GENERIC_PACK: https://mediafilez.forgecdn.net/files/4167/261/Server-files-1.0.6b.zip
     volumes:
