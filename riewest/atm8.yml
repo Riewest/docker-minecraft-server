@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  minecraft:
+    image: itzg/minecraft-server:java17
+    environment:
+      MEMORY: "8G"
+      EULA: "true"
+      TYPE: FORGE
+      DEBUG: "true"
+      VERSION: 1.19.2
+      FORGEVERSION: 43.1.55
+      MEMORY: 8G
+      GENERIC_PACK: https://mediafilez.forgecdn.net/files/4167/261/Server-files-1.0.6b.zip
+    volumes:
+      - /minecraft/installs/atm8:/data
+    ports:
+      - 25565:25565
