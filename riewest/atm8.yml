@@ -3,7 +3,6 @@ services:
   minecraft:
     image: itzg/minecraft-server:java17
     environment:
-      MEMORY: "8G"
       EULA: "true"
       TYPE: FORGE
       DEBUG: "true"
