@@ -12,6 +12,6 @@ services:
       MEMORY: 8G
       GENERIC_PACK: https://mediafilez.forgecdn.net/files/4248/411/Server-Files-1.0.7.zip
     volumes:
-      - /minecraft/installs/atm8:/data
+      - /minecraft/installs/atm8/107:/data
     ports:
       - 25565:25565
