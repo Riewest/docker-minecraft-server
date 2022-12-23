@@ -10,7 +10,7 @@ services:
       FORGEVERSION: 43.1.55
       OPS: riewest,logicengineer
       MEMORY: 8G
-      GENERIC_PACK: https://mediafilez.forgecdn.net/files/4167/261/Server-files-1.0.6b.zip
+      GENERIC_PACK: https://mediafilez.forgecdn.net/files/4248/411/Server-Files-1.0.7.zip
     volumes:
       - /minecraft/installs/atm8:/data
     ports:
