@@ -195,6 +195,7 @@ When using the image `itzg/minecraft-server` without a tag, the `latest` image t
 | java17-openj9     | 17           | Debian | OpenJ9      | amd64             |
 | java17-graalvm-ce | 17           | Oracle | GraalVM CE  | amd64,arm64       |
 | java17-alpine     | 17           | Alpine | Hotspot     | amd64             |
+| java19            | 19           | Ubuntu | Hotspot     | amd64,arm64,armv7 |
 
 For example, to use Java version 8 on any supported architecture:
 
@@ -421,6 +422,8 @@ Enable Bukkit/Spigot server mode by adding a `-e TYPE=BUKKIT` or `-e TYPE=SPIGOT
         -e TYPE=SPIGOT \
         -p 25565:25565 -e EULA=TRUE --name mc itzg/minecraft-server
 
+If the downloaded server jar is corrupted, set `FORCE_REDOWNLOAD` to "true" to force a re-download during next container startup. After successfully re-downloading, you should remove that or set to "false".
+
 If you are hosting your own copy of Bukkit/Spigot you can override the download URLs with:
 
 - -e BUKKIT_DOWNLOAD_URL=<url>
@@ -608,6 +611,79 @@ docker run -d --name mc-ftb -e EULA=TRUE \
 
 ## Running a server with a CurseForge modpack
 
+### Auto CurseForge Management
+
+To manage a CurseForge modpack automatically with upgrade support, pinned or latest version tracking, set `TYPE` to "AUTO_CURSEFORGE". The appropriate mod loader (Forge / Fabric) version will be automatically installed as declared by the modpack. This mode will also take care of cleaning up unused files installed by previous versions of the modpack, but world data is never auto-removed.
+
+> **NOTES:**
+> Be sure to use the appropriate [image tag for the Java version compatible with the modpack](#running-minecraft-server-on-different-java-version).
+> 
+> Most modpacks require a good amount of memory, so it best to set `MEMORY` to at least "4G" since the default is only 1 GB.
+
+Use one of the following to specify the modpack to install:
+
+Pass a page URL to the modpack or a specific file with `CF_PAGE_URL` such as the modpack page "https://www.curseforge.com/minecraft/modpacks/all-the-mods-8" or a specific file "https://www.curseforge.com/minecraft/modpacks/all-the-mods-8/files/4248390". For example:
+
+```
+-e TYPE=AUTO_CURSEFORGE -e CF_PAGE_URL=https://www.curseforge.com/minecraft/modpacks/all-the-mods-8
+```
+
+Instead of a URL, the modpack slug can be provided as `CF_SLUG`. The slug is the short identifier visible in the URL after "/modpacks/", such as
+
+![cf-slug](docs/cf-slug.png)
+
+For example:
+```
+-e TYPE=AUTO_CURSEFORGE -e CF_SLUG=all-the-mods-8
+```
+
+The latest file will be located and used by default, but if a specific version is desired you can use one of the following options. With any of these options **do not select a server file** -- they lack the required manifest and defeat the ability to consistently automate startup.
+
+- Use `CF_PAGE_URL`, but include the full URL to a specific file
+- Set `CF_FILE_ID` to the numerical file ID 
+- Specify a substring to match the desired filename with `CF_FILENAME_MATCHER`
+
+The following shows where to get the URL to the specific file and also shows where the file ID is located:
+
+![cf-file-id](docs/cf-file-id.png)
+
+The following examples all refer to version 1.0.7 of ATM8:
+
+```
+-e CF_PAGE_URL=https://www.curseforge.com/minecraft/modpacks/all-the-mods-8/files/4248390
+```
+
+```
+-e CF_SLUG=all-the-mods-8 -e CF_FILE_ID=4248390
+```
+
+```
+-e CF_SLUG=all-the-mods-8 -e CF_FILENAME_MATCHER=1.0.7
+```
+
+Quite often there are mods that need to be excluded, such as ones that did not properly declare as a client mod via the file's game versions. Similarly, there are some mods that are incorrectly tagged as client only. The following describes two options to exclude/include mods:
+
+Global and per modpack exclusions can be declared in a JSON file and referenced with `CF_EXCLUDE_INCLUDE_FILE`. By default, [the file bundled with the image](files/cf-exclude-include.json) will be used. The schema of this file [is documented here](https://github.com/itzg/mc-image-helper#excludeinclude-file-schema).
+
+Alternatively, they can be excluded by passing a comma or space delimited list of **project** slugs or IDs via `CF_EXCLUDE_MODS`. Similarly, there are some mods that are incorrectly tagged as client only. For those, pass the **project** slugs or IDs via `CF_FORCE_INCLUDE_MODS`. If either of these are set, then `CF_EXCLUDE_INCLUDE_FILE` will be **disabled**.
+
+A mod's project ID can be obtained from the right hand side of the project page:
+![cf-project-id](docs/cf-project-id.png)
+
+If needing to iterate on the options above, set `CF_FORCE_SYNCHRONIZE` to "true" to ensure the exclude/includes are re-evaluated.
+
+> **NOTE:** these options are provided to empower you to get your server up and running quickly. Please help out by reporting an issue with the respective mod project. Ideally mod developers should [use correct registrations for one-sided client mods](https://docs.minecraftforge.net/en/latest/concepts/sides/#writing-one-sided-mods). Understandably, those code changes may be non-trivial, so mod authors can also add "Client" to the game versions when publishing.
+
+Some modpacks come with world/save data via a worlds file and/or the overrides provided with the modpack. Either approach can be selected to set the `LEVEL` to the resulting saves directory by setting `CF_SET_LEVEL_FROM` to either:
+- `WORLD_FILE`
+- `OVERRIDES`
+
+Other configuration available:
+- `CF_PARALLEL_DOWNLOADS` (default is 4): specify how many parallel mod downloads to perform
+- `CF_OVERRIDES_SKIP_EXISTING` (default is false): if set, files in the overrides that already exist in the data directory are skipped. **NOTE** world data is always skipped, if present.
+
+### Old approach
+
 Enable this server mode by adding `-e TYPE=CURSEFORGE` to your command-line,
 but note the following additional steps needed...
 
@@ -716,6 +792,10 @@ For example, the following will auto-download the [EssentialsX](https://www.spig
                              ----------
                               |
                               +-- project slug
+  ```
+  Also, specific version/type can be declared using colon symbol and version id/type after the project slug. The version id can be found at 'Metadata' section. Valid version types are `release`, `beta`, `alpha`. For instance:
+  ```
+    -e MODRINTH_PROJECTS=fabric-api,fabric-api:PbVeub96,fabric-api:beta
   ```
 - **MODRINTH_DOWNLOAD_OPTIONAL_DEPENDENCIES**=true : required dependencies of the project will _always_ be downloaded and optional dependencies can also be downloaded by setting this to `true`
 - **MODRINTH_ALLOWED_VERSION_TYPE**=release : the version type is used to determine the newest version to use from each project. The allowed values are `release`, `beta`, `alpha`.
@@ -1004,7 +1084,7 @@ renders
 
 To produce a multi-line MOTD, you will need to double escape the newline such as
 
-  -e MOTD="Line one\\nLine two"
+    -e MOTD="Line one\\nLine two"
 
 ### Difficulty
 
@@ -1498,15 +1578,47 @@ To let the JVM calculate the heap size from the container declared memory limit,
 
 General JVM options can be passed to the Minecraft Server invocation by passing a `JVM_OPTS`
 environment variable. The JVM requires `-XX` options to precede `-X` options, so those can be declared in `JVM_XX_OPTS`. Both variables are space-delimited, raw JVM arguments.
+
 ```
--e JVM_OPTS="-someJVMOption someJVMOptionValue"
+docker run ... -e JVM_OPTS="-someJVMOption someJVMOptionValue" ...
 ```
 
-For some cases, if e.g. after removing mods, it could be necessary to startup minecraft with an additional `-D` parameter like `-Dfml.queryResult=confirm`. To address this you can use the environment variable `JVM_DD_OPTS`, which builds the params from a given list of values separated by space, but without the `-D` prefix. To make things running under systems (e.g. Plesk), which doesn't allow `=` inside values, a `:` (colon) could be used instead. The upper example would look like this:
-`JVM_DD_OPTS=fml.queryResult:confirm`, and will be converted to `-Dfml.queryResult=confirm`.
+**NOTE** When declaring `JVM_OPTS` in a compose file's `environment` section with list syntax, **do not** include the quotes:
 
-### Jarfile Options
-Options that would usually be passed to the jar file (those which are written after the filename) can be passed via the `EXTRA_ARGS` environment variable.
+```yaml
+    environment:
+      - EULA=true
+      - JVM_OPTS=-someJVMOption someJVMOptionValue 
+```
+
+Using object syntax is recommended and more intuitive:
+
+```yaml
+    environment:
+      EULA: "true"
+      JVM_OPTS: "-someJVMOption someJVMOptionValue"
+# or
+#     JVM_OPTS: -someJVMOption someJVMOptionValue
+```
+
+As a shorthand for passing several system properties as `-D` arguments, you can instead pass a comma separated list of `name=value` or `name:value` pairs with `JVM_DD_OPTS`. (The colon syntax is provided for management platforms like Plesk that don't allow `=` inside a value.)
+
+For example, instead of passing
+
+```yaml
+  JVM_OPTS: -Dfml.queryResult=confirm -Dname=value
+```
+
+you can use
+
+```yaml
+  JVM_DD_OPTS: fml.queryResult=confirm,name=value
+```
+
+### Extra Arguments
+
+Arguments that would usually be passed to the jar file (those which are written after the filename) can be passed via the `EXTRA_ARGS` environment variable.
+
 See [Custom worlds directory path](#custom-worlds-directory-path) for an example.
 
 ### Interactive and Color Console
