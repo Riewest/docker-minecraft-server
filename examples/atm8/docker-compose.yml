@@ -3,16 +3,35 @@ version: "3.8"
 services:
   mc:
     image: itzg/minecraft-server
+    restart: always
     ports:
-      - "25565:25565"
+      - "25565:25565" # minecraft port
+      - "8100:8100" # Bluemap port
     environment:
       EULA: "true"
       TYPE: AUTO_CURSEFORGE
       CF_PAGE_URL: https://www.curseforge.com/minecraft/modpacks/all-the-mods-8
-      CF_FILENAME_MATCHER: "1.0.6"
-      MEMORY: 4G
+      CF_FILENAME_MATCHER: "1.0.10"
+      MEMORY: 12G
+      MODS: https://github.com/BlueMap-Minecraft/BlueMap/releases/download/v3.9/BlueMap-3.9-forge-1.19.1.jar
+      ENABLE_RCON: true
+      RCON_PASSWORD: password
     volumes:
-      - mc-data:/data
+      - "${ATM8_INSTALL}/atm8:/data"
+      # - /mnt/user/suicidesquid/Minecraft/server_install_location/atm8_compose:/data
 
-volumes:
-  mc-data: {}
+  rcon:
+    image: itzg/rcon
+    environment:
+      RWA_USERNAME: admin  # Username/Password to the
+      RWA_PASSWORD: admin
+      RWA_ADMIN: "TRUE"
+      # is referring to the hostname of 'mc' compose service below
+      RWA_RCON_HOST: mc
+      # needs to match the password configured for the container, which is 'minecraft' by default
+      RWA_RCON_PASSWORD: password
+    ports:
+      - "4326:4326" # Web Server Port
+      - "4327:4327" # Websocket Port
+    volumes:
+      - "${ATM8_INSTALL}/rcon:/opt/rcon-web-admin/db"
